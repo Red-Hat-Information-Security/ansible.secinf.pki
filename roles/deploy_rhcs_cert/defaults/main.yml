@@ -1,0 +1,8 @@
+---
+# defaults file for deploy_rhcs_cert
+rhcs_pki_generate_csr_directory: '/root/certs'
+rhcs_pki_deploy_cert_directory: ''
+rhcs_pki_deploy_key_directory: ''
+rhcs_pki_deploy_cert_ca_chain_file: 'ca_chain'
+rhcs_pki_services_to_restart: ''
+rhcs_pki_cert_extension: 'pem'

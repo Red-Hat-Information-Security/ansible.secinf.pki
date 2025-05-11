@@ -1,0 +1,17 @@
+---
+# defaults file for generate_csr
+rhcs_pki_generate_csr_common_name: ''
+rhcs_pki_generate_csr_directory: '/root/certs'
+rhcs_pki_generate_csr_file_name_stub: "{{ inventory_hostname | split('.') | first }}"
+rhcs_pki_generate_csr_key_curve: 'secp384r1'
+rhcs_pki_generate_csr_force_new_key: false
+rhcs_pki_generate_csr_email_address: ''
+rhcs_pki_cnames: ''
+rhcs_certificate_management_repo: ''
+rhcs_certificate_management_repo_name: ''
+
+gitlab_api_creds:
+  url: ''
+  user: ''
+  pass: ""
+gitlab_base_url: "https://{{ gitlab_api_creds.user }}:{{ gitlab_api_creds.pass }}@{{ gitlab_api_creds.url }}"

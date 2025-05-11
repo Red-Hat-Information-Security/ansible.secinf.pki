@@ -1,0 +1,8 @@
+---
+rhcs_pki_username: ""
+rhcs_pki_password: ""
+rhcs_pki_profile: ""
+rhcs_pki_file_password: ""
+rhcs_pki_ca_cert_url: ""
+rhcs_pki_execution_host: ""
+rhcs_pki_certificate_url: ""

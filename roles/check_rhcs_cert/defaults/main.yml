@@ -1,0 +1,14 @@
+---
+# defaults file for check_rhcs_cert
+gitlab_base_url: ""
+aap_url: ""
+rhcs_certificate_management_repo: ''
+rhcs_certificate_management_repo_name: "{{ rhcs_certificate_management_repo | split('/') | last }}"
+rhcs_inventory_repo: ""
+rhcs_max_valid_months: 11
+rhcs_slack_webhook: ""
+rhcs_pki_cert_repo_branch: ""
+
+
+
+

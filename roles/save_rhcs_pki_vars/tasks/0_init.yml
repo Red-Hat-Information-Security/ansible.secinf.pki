@@ -1,0 +1,52 @@
+---
+- name: Pull inventory repo
+  ansible.builtin.git:
+    repo: "{{ gitlab_base_url }}/{{ rhcs_inventory_repo }}"
+    dest: "{{ rhcs_inventory_repo }}"
+  delegate_to: localhost
+  become: no
+  run_once: true
+  no_log: "{{ _not_log_sensitive | default('yes') }}"
+
+- name: Make sure host directory exists
+  ansible.builtin.file:
+    path: "{{ rhcs_inventory_repo }}/host_vars/{{ inventory_hostname }}"
+    state: directory
+    mode: '0755'
+  delegate_to: localhost
+
+- name: Check if pki.yml file exists
+  ansible.builtin.stat:
+    path: "{{ rhcs_inventory_repo }}/host_vars/{{ inventory_hostname }}/pki.yml"
+  register: pki_file
+  delegate_to: localhost
+
+- name: Create pki.yml file with survey variables if it does not exist
+  ansible.builtin.copy:
+    dest: "{{ rhcs_inventory_repo }}/host_vars/{{ inventory_hostname }}/pki.yml"
+    content: |
+      deploy_rhcs_cert_directory: "{{ deploy_rhcs_cert_directory | default('/etc/pki/nginx') }}"
+      deploy_rhcs_cert_name_stub: "{{ generate_csr_file_name_stub }}"
+      generate_csr_common_name: "{{ generate_csr_common_name }}"
+      cnames: "{{ cnames | default('') }}"
+      services_to_restart: "{{ services_to_restart | default('') }}"
+      generate_csr: "{{ generate_csr | default('true') }}"
+      auto_refresh: "{{ generate_csr | default('true') }}"
+    owner: 'root'
+    group: 'root'
+    mode: '0600'
+  delegate_to: localhost
+  when: not pki_file.stat.exists
+
+- name: pki.yml | Push changes to certificate management repo
+  secinf.utils.git_acp:
+    mode: 'https'
+    user: "{{ gitlab_api_creds.user }}"
+    token: "{{ gitlab_api_creds.pass }}"
+    path: "{{ rhcs_inventory_repo }}"
+    url: "{{ gitlab_base_url }}/{{ rhcs_inventory_repo }}/host_vars"
+    user_name: "{{ gitlab_api_creds.user }}"
+    user_email: 'no-reply@aap.infosec.redhat.com'
+    comment: "Added pki.yml: {{ inventory_hostname }} {{ lookup('pipe', 'date +%Y%m%dT%H%M%S') }}"
+  delegate_to: localhost
+  become: no

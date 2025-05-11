@@ -1,0 +1,9 @@
+---
+# main task file for save_rhcs_pki_vars
+- name: Initialize role
+  ansible.builtin.import_tasks:
+    file: '0_init.yml'
+  tags:
+    - save_rhcs_pki_vars
+
+...

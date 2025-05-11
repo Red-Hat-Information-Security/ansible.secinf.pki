@@ -1,0 +1,9 @@
+---
+# main task file for generate_csr
+- name: Initialize role
+  ansible.builtin.import_tasks:
+    file: '0_init.yml'
+  tags:
+    - generate_csr
+
+...

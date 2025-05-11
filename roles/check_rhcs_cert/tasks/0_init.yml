@@ -1,0 +1,184 @@
+---
+- name: Request | Pull certificate management repo
+  ansible.builtin.git:
+    repo: "{{ gitlab_base_url }}/{{ rhcs_certificate_management_repo }}"
+    dest: "{{ rhcs_certificate_management_repo_name }}"
+    version: "{{ rhcs_pki_cert_repo_branch | default('HEAD') }}"
+    update: yes
+  no_log: "{{ _not_log_sensitive | default('no') }}"
+
+- name: Find all host directories
+  ansible.builtin.find:
+    paths: "{{ rhcs_certificate_management_repo_name }}"
+    file_type: directory
+  register: host_dirs
+
+- name: Gather inventory hostnames from directories
+  ansible.builtin.set_fact:
+    inventory_hostnames: "{{ host_dirs.files | map(attribute='path') | map('basename') | list }}"
+    
+- name: Check if the creation_timestamp file exists
+  ansible.builtin.stat:
+    path: "{{ rhcs_certificate_management_repo_name }}/{{ item }}/creation_timestamp"
+  register: timestamp_file
+  loop: "{{ inventory_hostnames }}"
+
+- name: Get certificate timestamp 
+  ansible.builtin.command:
+    cmd: "cat {{ rhcs_certificate_management_repo_name }}/{{ item }}/creation_timestamp"
+  register: cert_date
+  when: timestamp_file.results[inventory_hostnames.index(item)].stat.exists
+  loop: "{{ inventory_hostnames }}"
+  changed_when: false
+
+- name: Calculate difference
+  ansible.builtin.shell: |
+    python3 -c "from datetime import datetime; print((datetime.strptime('{{ lookup('pipe', 'date +%Y%m%d') }}', '%Y%m%d') -  datetime.strptime('{{ item.stdout }}', '%Y%m%dT%H%M%S')).days // 30)"
+  register: month_diff
+  when: item.stdout is defined
+  loop: "{{ cert_date.results }}"
+  loop_control:
+    loop_var: item
+  changed_when: false
+
+- name: Set fact for expired certificates
+  ansible.builtin.set_fact:
+    expired_hosts: "{{ expired_hosts | default([]) + [item.item.item] }}"
+  when: item.stdout is defined and item.stdout | int >= rhcs_max_valid_months
+  loop: "{{ month_diff.results }}"
+
+- name: Fail the workflow if expired_hosts is empty
+  ansible.builtin.fail:
+    msg: "No expired certificates found. Stopping the workflow."
+  when: expired_hosts | default([]) | length == 0
+
+- name: Cleanup
+  ansible.builtin.command:
+    cmd: "rm -rf {{ rhcs_certificate_management_repo_name }}"
+  changed_when: false
+
+- name: Pull inventory repo
+  ansible.builtin.git:
+    repo: "{{ gitlab_base_url }}/{{ rhcs_inventory_repo }}"
+    dest: "{{ rhcs_inventory_repo }}"
+  delegate_to: localhost
+  become: no
+  run_once: true
+  no_log: "{{ _not_log_sensitive | default('yes') }}"
+
+- name: Initialize lists
+  ansible.builtin.set_fact:
+      rhcs_hosts_with_pki: []
+      rhcs_hosts_without_pki: []
+
+- name: Add hosts with pki vars to list
+  ansible.builtin.set_fact:
+    rhcs_hosts_with_pki: "{{ rhcs_hosts_with_pki + [item] }}"
+  loop: "{{ expired_hosts }}"
+  when: 
+    - hostvars[item].generate_csr_common_name is defined
+    - (rhcs_pki_auto_refresh | default(true)) 
+
+- name: Add hosts without pki vars to list
+  ansible.builtin.set_fact:
+    rhcs_hosts_without_pki: "{{ rhcs_hosts_without_pki + [item] }}"
+  loop: "{{ expired_hosts }}"
+  when: >
+    hostvars[item].generate_csr_common_name is not defined or
+    not (rhcs_pki_auto_refresh | default(true))    
+
+- name: Set host list with pki as a target
+  ansible.builtin.set_stats:
+    data:
+      _target: "{{ rhcs_hosts_with_pki }}"
+  when: rhcs_hosts_with_pki | length > 0
+
+- name: Expiried certs with pki | Send Slack notification      
+  vars:
+    rhcs_slack_message: |
+      blocks:
+      - type: section
+        text:
+          type: mrkdwn
+          text: |-
+            ===
+            :warning: *Certificate Expiration Notice*
+            ---
+      - type: section
+        text:
+          type: mrkdwn
+          text: |-
+            Hi folks!
+            Please be aware that one of our SSL certificate on host has expired:
+      - type: section
+        text:
+          type: mrkdwn
+          text: |-
+            {% for host in rhcs_hosts_with_pki %}
+            - *{{ host }}*
+            {% endfor %}
+      - type: divider
+      - type: section
+        text:
+          type: mrkdwn
+          text: |-
+            The automatic renewal process has been started.
+            <{{ aap_url }}/#/jobs/playbook/{{ tower_job_id }}|View the job in AAP>
+      - type: divider
+      - type: section
+        text:
+          type: mrkdwn
+          text: |-
+            Have a great rest of the day!
+  ansible.builtin.uri:
+    url: "{{ rhcs_slack_webhook }}"
+    method: 'POST'
+    body_format: 'json'
+    body: "{{ rhcs_slack_message }}"
+  become: no
+  when: rhcs_hosts_with_pki | length > 0
+
+- name: Expiried certs without pki | Send Slack notification      
+  vars:
+    rhcs_slack_message_action:
+      blocks:
+      - type: section
+        text:
+          type: mrkdwn
+          text: |-
+            ===
+            :warning: *Certificate Expiration Notice [ACTION REQUIRED]*
+            ---
+      - type: section
+        text:
+          type: mrkdwn
+          text: |-
+            Hi folks!
+            Please be aware that one of our SSL certificate on host has expired:
+      - type: section
+        text:
+          type: mrkdwn
+          text: |-
+            {% for host in rhcs_hosts_without_pki %}
+            - *{{ host }}*
+            {% endfor %}
+      - type: divider
+      - type: section
+        text:
+          type: mrkdwn
+          text: |-
+            Please run a manual workflow to renew expired certificates.
+            <{{ aap_url }}/#/templates/workflow_job_template/108/details|AAP manual workflow>
+      - type: divider
+      - type: section
+        text:
+          type: mrkdwn
+          text: |-
+            Have a great rest of the day!
+  ansible.builtin.uri:
+    url: "{{ rhcs_slack_webhook }}"
+    method: 'POST'
+    body_format: 'json'
+    body: "{{ rhcs_slack_message_action }}"
+  become: no
+  when: rhcs_hosts_without_pki | length > 0

@@ -1,0 +1,101 @@
+---
+- name: CSR | Create directory structure on host
+  ansible.builtin.file:
+    path: "{{ rhcs_pki_generate_csr_directory }}"
+    state: directory
+    mode: '0700'
+
+- block:
+    - name: CSR | Ensure private key present
+      ansible.builtin.stat:
+        path: "{{ rhcs_pki_generate_csr_directory }}/{{ rhcs_pki_generate_csr_file_name_stub }}.key"
+      register: _csr_private_key
+      failed_when:
+        - rhcs_pki_generate_csr_force_new_key or (not _csr_private_key.stat.exists)
+
+  rescue:
+    - name: CSR | Generate private key
+      ansible.builtin.command:
+        chdir: "{{ rhcs_pki_generate_csr_directory }}"
+        cmd: >-
+          openssl ecparam
+          -name {{ rhcs_pki_generate_csr_key_curve }}
+          -genkey -noout
+          -out {{ rhcs_pki_generate_csr_file_name_stub }}.key
+      register: _key_created
+      changed_when: true
+
+- name: CSR | Deploy config file
+  ansible.builtin.template:
+    src: 'san.cnf.j2'
+    dest: "{{ rhcs_pki_generate_csr_directory }}/san.cnf"
+    owner: 'root'
+    group: 'root'
+    mode: '0600'
+
+- name: CSR | Generate request
+  ansible.builtin.command:
+    chdir: "{{ rhcs_pki_generate_csr_directory }}"
+    cmd: >-
+      openssl req -new
+      -key {{ rhcs_pki_generate_csr_file_name_stub }}.key
+      -config san.cnf
+      -out {{ rhcs_pki_generate_csr_file_name_stub }}.csr
+  changed_when: true
+
+- name: CSR | Slurp request
+  ansible.builtin.command:
+    chdir: "{{ rhcs_pki_generate_csr_directory }}"
+    cmd: "cat {{ rhcs_pki_generate_csr_file_name_stub }}.csr"
+  register: _csr_request
+  changed_when: false
+
+# Standard http auth defined in inventory maintenance
+- name: CSR | Pull certificate management repo
+  ansible.builtin.git:
+    repo: "{{ gitlab_base_url }}/{{ rhcs_certificate_management_repo }}"
+    dest: "{{ rhcs_certificate_management_repo_name }}"
+    version:  "{{ rhcs_pki_cert_repo_branch | default('HEAD') }}"
+  delegate_to: localhost
+  become: no
+  run_once: yes
+  no_log: "{{ _not_log_sensitive | default('yes') }}"
+
+- name: CSR | Ensure host directory present in repo
+  ansible.builtin.file:
+    path: "{{ rhcs_certificate_management_repo_name }}/{{ inventory_hostname }}"
+    state: directory
+    mode: '0644'
+  delegate_to: localhost
+  become: no
+  changed_when: false
+
+- name: CSR | Export request to repository
+  ansible.builtin.copy:
+    content: "{{ _csr_request.stdout }}"
+    dest: "{{ rhcs_certificate_management_repo_name }}/{{ inventory_hostname }}/csr"
+    mode: '0644'
+  delegate_to: localhost
+  become: yes
+
+- name: CSR | Push changes to certificate management repo
+  secinf.utils.git_acp:
+    mode: 'https'
+    branch:  "{{ rhcs_pki_cert_repo_branch | default('HEAD') }}"
+    user: "{{ gitlab_api_creds.user }}"
+    token: "{{ gitlab_api_creds.pass }}"
+    path: "{{ rhcs_certificate_management_repo_name }}"
+    url: "https://gitlab.cee.redhat.com/{{ rhcs_certificate_management_repo }}"
+    user_name: "{{ gitlab_api_creds.user }}"
+    user_email: 'no-reply@aap.infosec.redhat.com'
+    comment: "CSR: {{ inventory_hostname }} {{ lookup('pipe', 'date +%Y%m%dT%H%M%S') }}"
+  run_once: yes
+  become: yes
+
+- name: Cleanup
+  ansible.builtin.command:
+    cmd: "rm -rf {{ rhcs_certificate_management_repo_name }}"
+  changed_when: false
+  delegate_to: localhost
+  run_once: yes
+...

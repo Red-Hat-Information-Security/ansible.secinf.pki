@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<CertEnrollmentRequest>
+    <Attributes>
+        <Attribute name="uid">{{ rhcs_pki_username }}</Attribute>
+        <Attribute name="pwd">{{ rhcs_pki_password }}</Attribute>
+    </Attributes>
+    <ProfileID>{{ rhcs_pki_profile }}</ProfileID>
+    <Renewal>false</Renewal>
+    <RemoteHost></RemoteHost>
+    <RemoteAddress></RemoteAddress>
+    <Input id="i1">
+        <ClassID>certReqInputImpl</ClassID>
+        <Name>Certificate Request Input</Name>
+        <Attribute name="cert_request_type">
+            <Value>{{ rhcs_pki_cert_request_type | default('pkcs10')}}</Value>
+            <Descriptor>
+                <Syntax>cert_request_type</Syntax>
+                <Description>Certificate Request Type</Description>
+            </Descriptor>
+        </Attribute>
+        <Attribute name="cert_request">
+            <Value>
+{{ _csr_request_trimmed }}
+            </Value>
+            <Descriptor>
+                <Syntax>cert_request</Syntax>
+                <Description>Certificate Request</Description>
+            </Descriptor>
+        </Attribute>
+    </Input>
+</CertEnrollmentRequest>

@@ -1,0 +1,3 @@
+---
+# vars file for generate_csr
+rhcs_pki_generate_csr_cnames: "{{ rhcs_pki_cnames | split(',') | map('trim') }}"

@@ -1,0 +1,9 @@
+---
+# main task file for deploy_rhcs_cert
+- name: Initialize role
+  ansible.builtin.import_tasks:
+    file: '0_init.yml'
+  tags:
+    - deploy_rhcs_cert
+
+...

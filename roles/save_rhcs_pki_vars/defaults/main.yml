@@ -1,0 +1,13 @@
+---
+# defaults file for check_rhcs_cert
+rhcs_certificate_management_repo: ''
+rhcs_certificate_management_repo_name: "{{ rhcs_certificate_management_repo | split('/') | last }}"
+rhcs_inventory_repo: ""
+
+gitlab_api_creds:
+  url: ''
+  user: ''
+  pass: ""
+gitlab_base_url: "https://{{ gitlab_api_creds.user }}:{{ gitlab_api_creds.pass }}@{{ gitlab_api_creds.url }}"
+
+

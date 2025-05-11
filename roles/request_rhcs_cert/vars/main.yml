@@ -1,0 +1,16 @@
+---
+# vars file for request_rhcs_cert
+_csr_request_trimmed: "{{ _csr_request.stdout_lines | select() | reject('contains', 'REQUEST') | join('\n') }}"
+_xml_filename: "{{ _target | split('.') | first }}_request.xml"
+_request_number: "{{ _request_output.stdout_lines
+  | map('trim')
+  | select('contains', 'Request ID')
+  | first
+  | replace('Request ID: ', '')
+  }}"
+_serial_id: "{{ _request_stat.stdout_lines
+  | map('trim')
+  | select('contains', 'Certificate ID')
+  | first
+  | replace('Certificate ID: ', '')
+  }}"

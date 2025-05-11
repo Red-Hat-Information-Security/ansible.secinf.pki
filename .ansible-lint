@@ -1,0 +1,17 @@
+enable_list:
+  - empty-string-compare
+  - no-log-password
+  - no-prompting
+
+skip_list:
+  - yaml
+  - name
+  - git-latest
+  - args[module]
+  - var-naming[no-role-prefix]
+  - var-naming[no-jinja]
+
+warn_list:
+  - no-handler
+  - jinja
+  - sanity

@@ -1,0 +1,11 @@
+---
+# vars file for deploy_rhcs_cert
+rhcs_pki_deploy_cert_services_restart: "{{ rhcs_pki_services_to_restart | split(',') | map('trim') }}"
+rhcs_pki_deploy_cert_name_stub: "{{ _cert_dir_content.stdout_lines
+  | map('trim')
+  | select('contains', '.key')
+  | first
+  | replace('.key', '')
+  }}"
+
+_cert_with_chain: "{{ (_retrieved_cert.stdout_lines + _ca_chain.stdout_lines) | join('\n') }}"

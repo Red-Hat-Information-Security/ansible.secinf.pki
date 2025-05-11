@@ -1,0 +1,32 @@
+[ req ]
+req_extensions = v3_req
+distinguished_name = req_distinguished_name
+x509_extensions = usr_cert
+prompt = no
+
+[ req_distinguished_name ]
+C            = US
+ST           = North Carolina
+L            = Raleigh
+O            = Red Hat
+OU           = Red Hat Information Risk and Security
+emailAddress = {{ rhcs_pki_generate_csr_email_address }}
+CN           = {{ rhcs_pki_generate_csr_common_name }}
+
+[ v3_req ]
+basicConstraints = CA:FALSE
+keyUsage = digitalSignature, nonRepudiation, keyEncipherment, dataEncipherment
+extendedKeyUsage = serverAuth, clientAuth, codeSigning, emailProtection
+subjectAltName = @alt_names
+
+[ usr_cert ]
+basicConstraints=CA:FALSE
+keyUsage = nonRepudiation, digitalSignature, keyEncipherment
+extendedKeyUsage = serverAuth, clientAuth, codeSigning, emailProtection
+subjectKeyIdentifier=hash
+authorityKeyIdentifier=keyid,issuer
+
+[ alt_names ]
+{% for name in (([rhcs_pki_generate_csr_common_name] + rhcs_pki_generate_csr_cnames) | select() | unique) %}
+DNS.{{ loop.index }} = {{ name }}
+{% endfor %}
