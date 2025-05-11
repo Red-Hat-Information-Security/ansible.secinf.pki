@@ -24,10 +24,4 @@ This collectioin includes the following roles:
 ### Collection requirements
 - ansible.posix
 - secinf.utils
-## Contribution guide
-1. Clone.
-3. Make desired additional changes.
-4. Elevate version in **galaxy.yml**.
-5. Create a changelog fragment with changes.
-6. `antsibull-changelog release`
-9. Commit changes to git.
+
