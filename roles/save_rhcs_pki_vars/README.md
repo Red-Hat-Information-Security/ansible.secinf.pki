@@ -16,3 +16,7 @@ rhcs_inventory_repo | '' | The inventory path where pki vars will be stored
   roles:
      - secinf.pki.save_rhcs_pki_vars
 ```
+
+## Linting
+
+To run static analysis tests on this role, navigate to the role directory and execute: `ansible-lint .`

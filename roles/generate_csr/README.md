@@ -21,3 +21,7 @@ rhcs_pki_cert_repo_branch | '' | (prod / preprod) branch for the certificate rep
   roles:
      - secinf.pki.generate_csr
 ```
+
+## Linting
+
+To run static analysis tests on this role, navigate to the role directory and execute: `ansible-lint .`

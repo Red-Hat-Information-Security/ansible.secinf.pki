@@ -3,7 +3,7 @@
   ansible.builtin.file:
     path: "{{ rhcs_pki_generate_csr_directory }}"
     state: directory
-    mode: '0700'
+    mode: "0700"
 
 - block:
     - name: CSR | Ensure private key present
@@ -27,11 +27,11 @@
 
 - name: CSR | Deploy config file
   ansible.builtin.template:
-    src: 'san.cnf.j2'
+    src: "san.cnf.j2"
     dest: "{{ rhcs_pki_generate_csr_directory }}/san.cnf"
-    owner: 'root'
-    group: 'root'
-    mode: '0600'
+    owner: "root"
+    group: "root"
+    mode: "0600"
 
 - name: CSR | Generate request
   ansible.builtin.command:
@@ -55,47 +55,46 @@
   ansible.builtin.git:
     repo: "{{ gitlab_base_url }}/{{ rhcs_certificate_management_repo }}"
     dest: "{{ rhcs_certificate_management_repo_name }}"
-    version:  "{{ rhcs_pki_cert_repo_branch | default('HEAD') }}"
+    version: "{{ rhcs_pki_cert_repo_branch | default('HEAD') }}"
   delegate_to: localhost
-  become: no
-  run_once: yes
+  become: false
+  run_once: true
   no_log: "{{ _not_log_sensitive | default('yes') }}"
 
 - name: CSR | Ensure host directory present in repo
   ansible.builtin.file:
     path: "{{ rhcs_certificate_management_repo_name }}/{{ inventory_hostname }}"
     state: directory
-    mode: '0644'
+    mode: "0644"
   delegate_to: localhost
-  become: no
+  become: false
   changed_when: false
 
 - name: CSR | Export request to repository
   ansible.builtin.copy:
     content: "{{ _csr_request.stdout }}"
     dest: "{{ rhcs_certificate_management_repo_name }}/{{ inventory_hostname }}/csr"
-    mode: '0644'
+    mode: "0644"
   delegate_to: localhost
-  become: yes
+  become: true
 
 - name: CSR | Push changes to certificate management repo
   secinf.utils.git_acp:
-    mode: 'https'
-    branch:  "{{ rhcs_pki_cert_repo_branch | default('HEAD') }}"
+    mode: "https"
+    branch: "{{ rhcs_pki_cert_repo_branch | default('HEAD') }}"
     user: "{{ gitlab_api_creds.user }}"
     token: "{{ gitlab_api_creds.pass }}"
     path: "{{ rhcs_certificate_management_repo_name }}"
     url: "https://gitlab.cee.redhat.com/{{ rhcs_certificate_management_repo }}"
     user_name: "{{ gitlab_api_creds.user }}"
-    user_email: 'no-reply@aap.infosec.redhat.com'
+    user_email: "no-reply@aap.infosec.redhat.com"
     comment: "CSR: {{ inventory_hostname }} {{ lookup('pipe', 'date +%Y%m%dT%H%M%S') }}"
-  run_once: yes
-  become: yes
+  run_once: true
+  become: true
 
 - name: Cleanup
   ansible.builtin.command:
     cmd: "rm -rf {{ rhcs_certificate_management_repo_name }}"
   changed_when: false
   delegate_to: localhost
-  run_once: yes
-...
+  run_once: true

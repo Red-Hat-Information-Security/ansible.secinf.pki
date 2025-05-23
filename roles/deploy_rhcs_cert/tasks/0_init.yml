@@ -4,7 +4,7 @@
     repo: "{{ gitlab_base_url }}/{{ rhcs_certificate_management_repo }}"
     dest: "{{ rhcs_certificate_management_repo_name }}"
   delegate_to: localhost
-  become: no
+  become: false
   run_once: true
   no_log: "{{ _not_log_sensitive | default('yes') }}"
 
@@ -14,7 +14,7 @@
   register: _retrieved_cert
   changed_when: false
   delegate_to: localhost
-  become: no
+  become: false
 
 - name: Deploy | Slurp CA chain
   ansible.builtin.command:
@@ -22,7 +22,7 @@
   register: _ca_chain
   changed_when: false
   delegate_to: localhost
-  become: no
+  become: false
 
 - name: Ensure directory structure exists
   when:
@@ -33,7 +33,7 @@
         path: "{{ item.dest }}"
       register: _cert_dir
       failed_when:
-        - not _cert_dir.stat.exists 
+        - not _cert_dir.stat.exists
         - item.dest | length > 0
       loop:
         - dest: "{{ rhcs_pki_deploy_cert_directory }}"
@@ -58,13 +58,13 @@
   ansible.builtin.copy:
     content: "{{ _retrieved_cert.stdout if rhcs_pki_cert_extension == 'crt' else _cert_with_chain }}"
     dest: "{{ rhcs_pki_generate_csr_directory }}/{{ rhcs_pki_deploy_cert_name_stub }}.{{ rhcs_pki_cert_extension }}"
-    owner: 'root'
-    group: 'root'
-    mode: '0600'
+    owner: "root"
+    group: "root"
+    mode: "0600"
 
 - name: Cert | Deploy certificate and key to desired location
   ansible.builtin.copy:
-    remote_src: yes
+    remote_src: true
     src: "{{ rhcs_pki_generate_csr_directory }}/{{ item.name }}"
     dest: "{{ item.dest }}/{{ item.name }}"
     owner: "{{ item.owner | d('root') }}"
@@ -72,10 +72,10 @@
     mode: "{{ item.mode }}"
   loop:
     - name: "{{ rhcs_pki_deploy_cert_name_stub }}.{{ rhcs_pki_cert_extension }}"
-      mode: '0600'
+      mode: "0600"
       dest: "{{ rhcs_pki_deploy_cert_directory }}"
     - name: "{{ rhcs_pki_deploy_cert_name_stub }}.key"
-      mode: '0600'
+      mode: "0600"
       dest: "{{ rhcs_pki_deploy_key_directory | d('') or rhcs_pki_deploy_cert_directory }}"
   when:
     - rhcs_pki_deploy_cert_directory | length
@@ -86,7 +86,7 @@
   changed_when: false
   when:
     - rhcs_pki_deploy_cert_directory | length
-  loop: 
+  loop:
     - dest: "{{ rhcs_pki_deploy_cert_directory }}"
     - dest: "{{ rhcs_pki_deploy_key_directory | d('') }}"
 
@@ -97,5 +97,3 @@
   loop: "{{ rhcs_pki_deploy_cert_services_restart }}"
   when:
     - rhcs_pki_services_to_restart | length
-
-...

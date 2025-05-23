@@ -23,3 +23,7 @@ aap_url | '' | The URL of the AAP instance
   roles:
      - secinf.pki.check_rhcs_cert
 ```
+
+## Linting
+
+To run static analysis tests on this role, navigate to the role directory and execute: `ansible-lint .`
