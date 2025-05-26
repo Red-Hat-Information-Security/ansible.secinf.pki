@@ -4,7 +4,6 @@ enable_list:
   - no-prompting
 
 skip_list:
-  - yaml
   - name
   - git-latest
   - args[module]

@@ -18,3 +18,7 @@ rhcs_pki_cert_extension | 'pem' | Certificate extension (e.g. 'crt'), pem is def
   roles:
      - secinf.pki.deploy_rhcs_cert
 ```
+
+## Linting
+
+To run static analysis tests on this role, navigate to the role directory and execute: `ansible-lint .`

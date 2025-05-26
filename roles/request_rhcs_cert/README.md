@@ -18,3 +18,7 @@ rhcs_pki_execution_host | '' | Execution host for RHCS request process
   roles:
      - secinf.pki.request_rhcs_cert
 ```
+
+## Linting
+
+To run static analysis tests on this role, navigate to the role directory and execute: `ansible-lint .`

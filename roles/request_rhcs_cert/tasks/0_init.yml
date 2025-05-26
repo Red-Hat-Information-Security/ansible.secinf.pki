@@ -7,10 +7,10 @@
 
 - name: Request | Create pki password
   ansible.builtin.template:
-    src: 'pki.password.j2'
-    dest: '~/.pki.password'
-    mode: '0600'
-  become: no
+    src: "pki.password.j2"
+    dest: "~/.pki.password"
+    mode: "0600"
+  become: false
   delegate_to: "{{ rhcs_pki_execution_host }}"
 
 - name: Request | Initialize PKI client
@@ -23,7 +23,7 @@
   ansible.builtin.get_url:
     url: "{{ rhcs_pki_ca_cert_url }}"
     dest: ~/pki_rhcs_ca_cert.pem
-    mode: '0644'
+    mode: "0644"
   delegate_to: "{{ rhcs_pki_execution_host }}"
 
 - name: Request | Import CA cert and set trust
@@ -40,9 +40,9 @@
   ansible.builtin.git:
     repo: "{{ gitlab_base_url }}/{{ rhcs_certificate_management_repo }}"
     dest: "{{ rhcs_certificate_management_repo_name }}"
-    update: yes
+    update: true
   delegate_to: localhost
-  become: no
+  become: false
   run_once: true
   no_log: "{{ _not_log_sensitive | default('yes') }}"
 
@@ -52,21 +52,21 @@
   register: _csr_request
   changed_when: false
   delegate_to: localhost
-  become: no
+  become: false
 
 - name: Create XML Request File
   ansible.builtin.tempfile:
     state: file
   register: _ca_server_cert_file
-  become: no
+  become: false
   delegate_to: "{{ rhcs_pki_execution_host }}"
 
 - name: Request | Generate RHCS
   ansible.builtin.template:
-    src: 'caServerCert.xml.j2'
+    src: "caServerCert.xml.j2"
     dest: "{{ _ca_server_cert_file.path }}"
-    mode: '0600'
-  become: no
+    mode: "0600"
+  become: false
   delegate_to: "{{ rhcs_pki_execution_host }}"
 
 - name: PKI Request Block
@@ -80,7 +80,7 @@
           ca-cert-request-submit {{ _ca_server_cert_file.path }}
       register: _request_output
       changed_when: true
-      become: no
+      become: false
       throttle: 1
       delegate_to: "{{ rhcs_pki_execution_host }}"
 
@@ -96,7 +96,7 @@
       delay: 600
       retries: 144
       changed_when: true
-      become: no
+      become: false
       throttle: 1
       delegate_to: "{{ rhcs_pki_execution_host }}"
 
@@ -109,7 +109,7 @@
           ca-cert-export {{ _serial_id }}
       register: _retrieved_cert
       changed_when: false
-      become: no
+      become: false
       throttle: 1
       delegate_to: "{{ rhcs_pki_execution_host }}"
   always:
@@ -124,9 +124,9 @@
   ansible.builtin.git:
     repo: "{{ gitlab_base_url }}/{{ rhcs_certificate_management_repo }}"
     dest: "{{ rhcs_certificate_management_repo_name }}"
-    update: yes
+    update: true
   delegate_to: localhost
-  become: no
+  become: false
   run_once: true
   no_log: "{{ _not_log_sensitive | default('yes') }}"
 
@@ -134,46 +134,44 @@
   ansible.builtin.copy:
     content: "{{ _request_number }}"
     dest: "{{ rhcs_certificate_management_repo_name }}/{{ inventory_hostname }}/request_id"
-    mode: '0644'
+    mode: "0644"
   delegate_to: localhost
-  become: no
+  become: false
 
 - name: Retrieve | Export certificate ID to repository
   ansible.builtin.copy:
     content: "{{ _serial_id }}"
     dest: "{{ rhcs_certificate_management_repo_name }}/{{ inventory_hostname }}/serial_id"
-    mode: '0644'
+    mode: "0644"
   delegate_to: localhost
-  become: no
+  become: false
 
 - name: Retrieve | Export certificate creation time to repository
   ansible.builtin.copy:
     content: "{{ lookup('pipe', 'date +%Y%m%dT%H%M%S') }}"
     dest: "{{ rhcs_certificate_management_repo_name }}/{{ inventory_hostname }}/creation_timestamp"
-    mode: '0644'
+    mode: "0644"
   delegate_to: localhost
-  become: no
+  become: false
 
 - name: Retrieve | Export certificate to repository
   ansible.builtin.copy:
     content: "{{ _retrieved_cert.stdout }}"
     dest: "{{ rhcs_certificate_management_repo_name }}/{{ inventory_hostname }}/certificate"
-    mode: '0644'
+    mode: "0644"
   delegate_to: localhost
-  become: no
+  become: false
 
 - name: CSR | Push changes to certificate management repo
   secinf.utils.git_acp:
-    mode: 'https'
+    mode: "https"
     user: "{{ gitlab_api_creds.user }}"
     token: "{{ gitlab_api_creds.pass }}"
     path: "{{ rhcs_certificate_management_repo_name }}"
     url: "https://gitlab.cee.redhat.com/{{ rhcs_certificate_management_repo }}"
     user_name: "{{ gitlab_api_creds.user }}"
-    user_email: 'no-reply@aap.infosec.redhat.com'
+    user_email: "no-reply@aap.infosec.redhat.com"
     comment: "Certificate: {{ inventory_hostname }} {{ lookup('pipe', 'date +%Y%m%dT%H%M%S') }}"
   delegate_to: localhost
   run_once: true
-  become: no
-
-...
+  become: false
