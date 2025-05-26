@@ -103,7 +103,7 @@
 
 - name: Expiried certs with pki | Send Slack notification
   vars:
-    rhcs_slack_message: |
+    rhcs_slack_message:
       blocks:
       - type: section
         text:
